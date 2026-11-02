@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# FAKE trivy for the bats tests. Records the call; fails for platforms listed in $MOCK_FAIL_PLATFORMS.
+echo "$*" >>"$MOCK_DIR/trivy-calls.log"
+platform=""
+output=""
+previous=""
+for word in "$@"; do
+  [ "$previous" = "--platform" ] && platform="$word"
+  [ "$previous" = "--output" ] && output="$word"
+  previous="$word"
+done
+[ -z "$output" ] || echo '{"version":"2.1.0","runs":[]}' >"$output"
+case ",${MOCK_FAIL_PLATFORMS:-}," in
+  *",$platform,"*)
+    if [[ " $* " == *" --exit-code 1 "* ]]; then
+      echo "CRITICAL CVE-2026-0001 in $platform"
+      exit 1
+    fi
+    ;;
+esac
+echo "no problems in $platform"

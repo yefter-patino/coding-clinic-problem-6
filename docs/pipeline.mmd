@@ -1,0 +1,30 @@
+flowchart TD
+    trigger(["Pull request, or push to main / release/**"]) --> test["Job 1: unit tests<br/>(pytest)"]
+    test --> gate{"Gate: push or manual run<br/>AND a branch<br/>AND github.ref_protected?"}
+
+    subgraph JOB2["Job 2: image  (one runner, one temporary registry)"]
+        direction TB
+        gate --> build["docker buildx + QEMU<br/>build linux/amd64 + linux/arm64<br/>+ SBOM + provenance"]
+        build --> local[("Temporary registry<br/>localhost:5000<br/>image@sha256:DIGEST")]
+        local --> scan["Trivy v0.76.1<br/>scan EVERY platform by digest<br/>vulnerabilities + leaked secrets"]
+        scan --> sarif["SARIF report<br/>to the GitHub Security tab"]
+        scan --> pass{"Any CRITICAL / HIGH<br/>with a fix available?"}
+        pass -- yes --> stop1(["Job fails<br/>nothing is published"])
+        pass -- no --> pub{"Gate said publish?"}
+        pub -- "no (PR / unprotected)" --> stop2(["Done: built + scanned only"])
+        pub -- yes --> login["OIDC logins, no stored passwords<br/>AWS role / Azure app / Google WIF"]
+        login --> copy["crane copy<br/>same bytes, same DIGEST<br/>tags: sha-xxxx, branch, latest"]
+        copy --> ecr[("Amazon ECR")]
+        copy --> acr[("Azure ACR")]
+        copy --> gar[("Google Artifact Registry")]
+        ecr --> sign["Cosign keyless sign --recursive<br/>(index + every platform)<br/>Fulcio cert for this workflow + Rekor log"]
+        acr --> sign
+        gar --> sign
+        sign --> verify["cosign verify<br/>certificate-identity = this workflow on this branch"]
+        verify --> summary(["Job summary:<br/>repository, digest, tags, signed"])
+    end
+
+    classDef bad fill:#fde2e1,stroke:#c0392b,color:#000
+    classDef good fill:#e3f4e1,stroke:#2e7d32,color:#000
+    class stop1 bad
+    class summary,verify good

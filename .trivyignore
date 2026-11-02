@@ -1,0 +1,5 @@
+# Vulnerabilities you have reviewed and accepted, one ID per line, WITH a reason and a review date.
+# Keep this list short: every line here is a risk you are choosing to ship.
+#
+# Example:
+# CVE-2026-12345  # not reachable: we never call the affected function. Review again: 2026-12-31

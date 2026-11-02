@@ -1,0 +1,4 @@
+# Only the app goes into the image.
+*
+!app/
+app/__pycache__/

@@ -1,0 +1,5 @@
+__pycache__/
+.pytest_cache/
+.venv/
+trivy-results.sarif
+.DS_Store
